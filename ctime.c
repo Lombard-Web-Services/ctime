@@ -19,7 +19,6 @@ static int use_chrono = 0; // Chronometer off by default
 static int use_dmy = 0; // DMY option off by default
 
 // Get current CPU frequency from /proc/cpuinfo
-// Get current CPU frequency from /proc/cpuinfo
 double get_cpu_freq_mhz() {
  FILE *fp = fopen("/proc/cpuinfo", "r");
  if (!fp) {
