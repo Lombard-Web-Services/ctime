@@ -83,7 +83,7 @@ Available units:
 ```
 
 ## Limitations
-ctime do better compute than unix nanoseconds gettime function, it's a sub-nanosecond precision : ~370 picoseconds at 2.7 GHz, or 3.7 × 10⁻¹³ s, but taking into account that (10⁻⁹ s)was not too far from femtoseconds (10⁻¹⁵ s) I have decided to interpolate between cycles and calibrate over a short interval to estimate time at femtosecond resolution, then outputed it.
+ctime do better compute than unix nanoseconds gettime function, it's a sub-nanosecond precision : ~370 picoseconds at 2.7 GHz, or 3.7 × 10⁻¹³ s, but taking into account that (10⁻⁹ s)was not too far from femtoseconds (10⁻¹⁵ s) I have decided to apply a linear regression with magnitude normalization between cycles and calibrate over a short interval to estimate time at femtosecond resolution, then outputed it.
 
 ### credits
 Grok3
