@@ -18,37 +18,58 @@ static int use_unix = 1; // Default to Unix time
 static int use_chrono = 0; // Chronometer off by default
 static int use_dmy = 0; // DMY option off by default
 
-// Get current CPU frequency from /proc/cpuinfo
+// Get CPU frequency using lscpu with English output
 double get_cpu_freq_mhz() {
- FILE *fp = fopen("/proc/cpuinfo", "r");
+ FILE *fp = popen("LC_ALL=C lscpu", "r"); // Force English output
  if (!fp) {
-  perror("Failed to open /proc/cpuinfo");
+  if (verbose) printf("Failed to run lscpu, falling back to 2700 MHz\n");
   return 2700.0; // Fallback to 2.7 GHz
  }
 
  char line[256];
- double total_mhz = 0.0;
- int cpu_count = 0;
-
+ double mhz = 0.0;
  while (fgets(line, sizeof(line), fp)) {
-  if (strncmp(line, "cpu MHz", 7) == 0) {
-   double mhz;
-   sscanf(line, "cpu MHz : %lf", &mhz);
-   total_mhz += mhz;
-   cpu_count++;
+  if (verbose) printf("lscpu output: %s", line); // Debug raw output
+  if (strstr(line, "CPU max MHz")) {
+   // Handle both dot and comma separators
+   char *value = strchr(line, ':') + 1;
+   char cleaned_value[32];
+   int j = 0;
+   for (int i = 0; value[i] && j < sizeof(cleaned_value) - 1; i++) {
+    if (value[i] == ',') cleaned_value[j++] = '.'; // Replace comma with dot
+    else if (value[i] != ' ') cleaned_value[j++] = value[i]; // Skip spaces
+   }
+   cleaned_value[j] = '\0';
+   if (sscanf(cleaned_value, "%lf", &mhz) == 1 && mhz > 0.0) {
+    break;
+   }
+  }
+  // Fallback to "CPU MHz" if "CPU max MHz" isn't found
+  if (strstr(line, "CPU MHz")) {
+   char *value = strchr(line, ':') + 1;
+   char cleaned_value[32];
+   int j = 0;
+   for (int i = 0; value[i] && j < sizeof(cleaned_value) - 1; i++) {
+    if (value[i] == ',') cleaned_value[j++] = '.'; // Replace comma with dot
+    else if (value[i] != ' ') cleaned_value[j++] = value[i]; // Skip spaces
+   }
+   cleaned_value[j] = '\0';
+   if (sscanf(cleaned_value, "%lf", &mhz) == 1 && mhz > 0.0) {
+    if (verbose) printf("Falling back to 'CPU MHz' value\n");
+    break;
+   }
   }
  }
 
- fclose(fp);
+ pclose(fp);
 
- if (cpu_count == 0) {
-  if (verbose) printf("No CPU MHz found, using default 2700 MHz\n");
+ if (mhz <= 0.0) {
+  if (verbose) printf("No valid CPU MHz found in lscpu, using default 2700 MHz\n");
   return 2700.0;
  }
 
- double avg_mhz = total_mhz / cpu_count;
- if (verbose) printf("Average CPU frequency: %.3f MHz (%.3f GHz)\n", avg_mhz, avg_mhz / 1000.0);
- return avg_mhz;
+ if (verbose) printf("Detected CPU frequency: %.3f MHz (%.3f GHz)\n", mhz, mhz / 1000.0);
+ return mhz;
 }
 
 // rdtsc for cycle-accurate timing
@@ -80,7 +101,7 @@ int clock_gettime(clockid_t clock_id, struct timespec *tp) {
   unsigned long long rdtsc_start = rdtsc();
   struct timeval tv_cal_start, tv_cal_end;
   gettimeofday(&tv_cal_start, NULL);
-  while (rdtsc() - rdtsc_start < 2700); // Delay ~1 µs at 2.7 GHz
+  while (rdtsc() - rdtsc_start < freq_hz / 1e6); // Dynamic 1 µs delay
   gettimeofday(&tv_cal_end, NULL);
   unsigned long long rdtsc_end = rdtsc();
 
@@ -150,7 +171,6 @@ void print_dmy_from_femtoseconds(double femtoseconds) {
  double seconds = femtoseconds / 1e15;
  time_t secs = (time_t)seconds;
  struct tm *tm_info = gmtime(&secs); // UTC time
- // struct tm *tm_info = localtime(&secs); // Uncomment for local time
 
  char buffer[32];
  strftime(buffer, sizeof(buffer), "%d-%m-%Y %H:%M:%S", tm_info);
@@ -268,3 +288,4 @@ int main(int argc, char *argv[]) {
 
  return 0;
 }
+
