@@ -1,5 +1,6 @@
 // By Thibaut LOMBARD (Lombard Web)
 // ctime with pthread calibration
+// compile with gcc -o ctime ctime.calibration.pthread.c -pthread
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
