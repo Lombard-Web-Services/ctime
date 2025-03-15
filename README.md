@@ -1,14 +1,14 @@
 # ctime
 ctime is a cpu based clock-cycle compuation replacement for unix gettime function, supportting femtoseconds and attoseconds.
 
-## How it works ?
-I have tryied to acheive this 
-* 1 femtosecond = 10⁻¹⁵ seconds.
-* For 1 megafemtosecond (1 nanosecond), you’d need 10⁹ ticks per second (1 gigahertz clock with perfect sampling).
+## Features
+Computation of timestamp from cpu clock speed, i precise that my program is purely experimental.
 
-Modern CPUs operate at gigahertz speeds (e.g., 3 GHz = 3 × 10⁹ cycles/second), so nanosecond thresold is theoretically approachable with CPU cycle counters.
+Two version of the program are available
+* one version for pthread with calibration phases (detect cpu clock speed , measure the thresold and compute), features that detect and exploit hyperthreading in /proc/cpuinfo
+* one version for generic cpu
 
-The RDTSC assembly instruction (read time stamp counter) is available in C, I used it to avoid to use the clock() function directly from <time.h> because CLOCKS_PER_SEC takes 10⁶ (microseconds) so i have rewritten gettime.
+I used the RDTSC assembly instruction (read time stamp counter) to avoid to pass the time expensive CLOCKS_PER_SEC of the clock() function included into the time.h library.
 
 Here is the  RDTSC  call
 ```sh
@@ -26,7 +26,9 @@ double calibrate_with_rdtsc(double clock_freq) {
 }
 ```
 
-I also have calibrated the cpus with hyperthreading using pthread. 
+## How to use 
 
 
+### credits
+Grok3
 
