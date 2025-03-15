@@ -8,9 +8,9 @@ Two version of the program are available
 * one version for pthread with calibration phases (detect cpu clock speed , measure the thresold and compute), features that detect and exploit hyperthreading in /proc/cpuinfo
 * one version for generic cpu
 
-I used the RDTSC assembly instruction (read time stamp counter) to avoid to pass the time expensive CLOCKS_PER_SEC of the clock() function included into the time.h library.
+I used the rdtsc assembly instruction (read time stamp counter) to avoid to pass the time expensive CLOCKS_PER_SEC of the clock() function included into the time.h library.
 
-Here is the  RDTSC  call
+Here is the rdtsc call
 ```sh
 unsigned long long rdtsc() {
     unsigned int lo, hi;
