@@ -44,6 +44,11 @@ Precision: Displaying up to 18 digits for attoseconds
 Cycles: 2314400, Seconds: 0.000001000000, Time in attoseconds: 0.000001000000000000
 ```
 ## How to use 
+compile with gcc : 
+```gcc -o ctime ctime.c -pthread```
+or execute (v for verbose mode,   :
+./ctime -v --unit femtoseconds
+
 ```sh
 Usage: ./ctime [OPTIONS]
 Options:
