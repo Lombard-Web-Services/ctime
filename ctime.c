@@ -18,44 +18,31 @@ static int use_unix = 1; // Default to Unix time
 static int use_chrono = 0; // Chronometer off by default
 static int use_dmy = 0; // DMY option off by default
 
+// TSC frequency (initialized once)
+static double tsc_freq_hz = 0.0;
+
 // Get CPU frequency using lscpu with English output
 double get_cpu_freq_mhz() {
- FILE *fp = popen("LC_ALL=C lscpu", "r"); // Force English output
+ FILE *fp = popen("LC_ALL=C lscpu", "r");
  if (!fp) {
-  if (verbose) printf("Failed to run lscpu, falling back to 2700 MHz\n");
-  return 2700.0; // Fallback to 2.7 GHz
+  if (verbose) printf("Failed to run lscpu, falling back to 2200 MHz\n");
+  return 2200.0; // Ryzen 7 2700U base frequency
  }
 
  char line[256];
  double mhz = 0.0;
  while (fgets(line, sizeof(line), fp)) {
-  if (verbose) printf("lscpu output: %s", line); // Debug raw output
+  if (verbose) printf("lscpu output: %s", line);
   if (strstr(line, "CPU max MHz")) {
-   // Handle both dot and comma separators
    char *value = strchr(line, ':') + 1;
    char cleaned_value[32];
    int j = 0;
    for (int i = 0; value[i] && j < sizeof(cleaned_value) - 1; i++) {
-    if (value[i] == ',') cleaned_value[j++] = '.'; // Replace comma with dot
-    else if (value[i] != ' ') cleaned_value[j++] = value[i]; // Skip spaces
+    if (value[i] == ',') cleaned_value[j++] = '.';
+    else if (value[i] != ' ') cleaned_value[j++] = value[i];
    }
    cleaned_value[j] = '\0';
    if (sscanf(cleaned_value, "%lf", &mhz) == 1 && mhz > 0.0) {
-    break;
-   }
-  }
-  // Fallback to "CPU MHz" if "CPU max MHz" isn't found
-  if (strstr(line, "CPU MHz")) {
-   char *value = strchr(line, ':') + 1;
-   char cleaned_value[32];
-   int j = 0;
-   for (int i = 0; value[i] && j < sizeof(cleaned_value) - 1; i++) {
-    if (value[i] == ',') cleaned_value[j++] = '.'; // Replace comma with dot
-    else if (value[i] != ' ') cleaned_value[j++] = value[i]; // Skip spaces
-   }
-   cleaned_value[j] = '\0';
-   if (sscanf(cleaned_value, "%lf", &mhz) == 1 && mhz > 0.0) {
-    if (verbose) printf("Falling back to 'CPU MHz' value\n");
     break;
    }
   }
@@ -64,8 +51,8 @@ double get_cpu_freq_mhz() {
  pclose(fp);
 
  if (mhz <= 0.0) {
-  if (verbose) printf("No valid CPU MHz found in lscpu, using default 2700 MHz\n");
-  return 2700.0;
+  if (verbose) printf("No valid CPU MHz found in lscpu, using default 2200 MHz\n");
+  return 2200.0;
  }
 
  if (verbose) printf("Detected CPU frequency: %.3f MHz (%.3f GHz)\n", mhz, mhz / 1000.0);
@@ -79,41 +66,143 @@ static inline unsigned long long rdtsc() {
  return ((unsigned long long)hi << 32) | lo;
 }
 
-// High-precision clock_gettime with femtosecond resolution
-int clock_gettime(clockid_t clock_id, struct timespec *tp) {
- static double freq_hz = 0.0; // CPU frequency in Hz
+// Initialize TSC frequency using regression
+void init_tsc_freq() {
+ if (tsc_freq_hz != 0.0) return; // Already initialized
+
+ const int samples = 10;
+ unsigned long long tsc_values[samples];
+ double time_values[samples];
+ struct timeval tv;
+
+ // Collect samples
+ for (int i = 0; i < samples; i++) {
+  tsc_values[i] = rdtsc();
+  if (gettimeofday(&tv, NULL) != 0) { // Use system gettimeofday
+   if (verbose) printf("System gettimeofday failed at sample %d\n", i);
+   tsc_freq_hz = get_cpu_freq_mhz() * 1e6; // Fallback
+   return;
+  }
+  time_values[i] = (double)tv.tv_sec + (double)tv.tv_usec / 1e6;
+  if (verbose) printf("Sample %d: TSC=%llu, Time=%.15f\n", i, tsc_values[i], time_values[i]);
+  usleep(10); // ~10 µs delay between samples, total ~100 µs
+ }
+
+ // Normalize TSC values to reduce magnitude
+ unsigned long long tsc_base = tsc_values[0];
+ double sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
+ for (int i = 0; i < samples; i++) {
+  double x = (double)(tsc_values[i] - tsc_base); // Relative TSC ticks
+  double y = time_values[i] - time_values[0]; // Relative time in seconds
+  sum_x += x;
+  sum_y += y;
+  sum_xy += x * y;
+  sum_xx += x * x;
+ }
+
+ double mean_x = sum_x / samples;
+ double mean_y = sum_y / samples;
+ double numerator = sum_xy - samples * mean_x * mean_y;
+ double denominator = sum_xx - samples * mean_x * mean_x;
+
+ if (denominator <= 0 || numerator <= 0) {
+  if (verbose) printf("Invalid regression (denominator=%.0f, numerator=%.0f), using fallback\n", denominator, numerator);
+  tsc_freq_hz = get_cpu_freq_mhz() * 1e6; // Fallback to lscpu frequency
+ } else {
+  double slope = numerator / denominator; // Seconds per tick
+  tsc_freq_hz = 1.0 / slope;     // Ticks per second
+  if (tsc_freq_hz <= 0 || tsc_freq_hz > 1e12) { // Sanity check (max 1 THz)
+   if (verbose) printf("Unreasonable TSC frequency (%.3f GHz), using fallback\n", tsc_freq_hz / 1e9);
+   tsc_freq_hz = get_cpu_freq_mhz() * 1e6;
+  }
+ }
+
+ if (verbose) printf("Regression TSC frequency: %.3f GHz\n", tsc_freq_hz / 1e9);
+}
+
+// Custom high-precision gettimeofday using TSC
+int my_gettimeofday(struct timeval *tv, struct timezone *tz) {
+ if (verbose) printf("Entering my_gettimeofday\n");
+
+ if (tsc_freq_hz == 0.0) init_tsc_freq(); // Ensure frequency is initialized
+
+ static unsigned long long base_tsc = 0;
+ static struct timeval base_tv = {0, 0};
  static int initialized = 0;
 
  if (!initialized) {
-  freq_hz = get_cpu_freq_mhz() * 1e6; // MHz to Hz
-  initialized = 1;
- }
-
- switch (clock_id) {
- case CLOCK_REALTIME: {
-  struct timeval tv_start;
-  if (gettimeofday(&tv_start, NULL) != 0) {
+  if (gettimeofday(&base_tv, NULL) != 0) { // Use system gettimeofday
+   if (verbose) printf("Initial system gettimeofday failed\n");
    errno = EINVAL;
    return -1;
   }
-  TIMEVAL_TO_TIMESPEC(&tv_start, tp);
+  base_tsc = rdtsc();
+  if (verbose) printf("Initialized: base_tsc=%llu, base_tv=%ld.%06ld\n",
+         base_tsc, base_tv.tv_sec, base_tv.tv_usec);
+  initialized = 1;
+ }
 
-  unsigned long long rdtsc_start = rdtsc();
-  struct timeval tv_cal_start, tv_cal_end;
-  gettimeofday(&tv_cal_start, NULL);
-  while (rdtsc() - rdtsc_start < freq_hz / 1e6); // Dynamic 1 µs delay
-  gettimeofday(&tv_cal_end, NULL);
-  unsigned long long rdtsc_end = rdtsc();
+ if (tv == NULL) {
+  if (verbose) printf("tv is NULL\n");
+  errno = EINVAL;
+  return -1;
+ }
 
-  double tv_diff = (tv_cal_end.tv_sec - tv_cal_start.tv_sec) +
-       (tv_cal_end.tv_usec - tv_cal_start.tv_usec) / 1e6;
-  double cycles_diff = (double)(rdtsc_end - rdtsc_start);
-  double measured_freq = cycles_diff / tv_diff;
+ unsigned long long now_tsc = rdtsc();
+ double tsc_diff = (double)(now_tsc >= base_tsc ? now_tsc - base_tsc : 0); // Prevent underflow
+ double elapsed_seconds = tsc_diff / tsc_freq_hz;
+ double base_seconds = (double)base_tv.tv_sec + (double)base_tv.tv_usec / 1e6;
+ double total_seconds = base_seconds + elapsed_seconds;
 
-  unsigned long long rdtsc_now = rdtsc();
-  double base_seconds = (double)tp->tv_sec + (double)tp->tv_nsec / 1e9;
-  double sub_nano = (double)(rdtsc_now - rdtsc_start) / measured_freq;
-  double total_seconds = base_seconds + sub_nano;
+ if (verbose) printf("DEBUG: now_tsc=%llu, tsc_diff=%.0f, elapsed_seconds=%.15f, base_seconds=%.15f, total_seconds=%.15f\n",
+        now_tsc, tsc_diff, elapsed_seconds, base_seconds, total_seconds);
+
+ tv->tv_sec = (time_t)total_seconds;
+ tv->tv_usec = (long)((total_seconds - (double)tv->tv_sec) * 1e6);
+
+ // Bounds check to prevent overflow
+ if (tv->tv_sec < 0 || tv->tv_usec < 0 || tv->tv_usec >= 1000000) {
+  if (verbose) printf("Time overflow detected, resetting to base\n");
+  tv->tv_sec = base_tv.tv_sec;
+  tv->tv_usec = base_tv.tv_usec;
+ }
+
+ if (verbose) printf("Computed time: %ld sec, %ld usec\n", tv->tv_sec, tv->tv_usec);
+
+ if (tz != NULL) {
+  struct tm tm;
+  if (localtime_r(&tv->tv_sec, &tm) == NULL) {
+   if (verbose) printf("localtime_r failed\n");
+   return -1;
+  }
+  tz->tz_minuteswest = timezone / 60;
+  tz->tz_dsttime = daylight;
+  if (verbose) printf("Timezone: %d min west, %d dst\n", tz->tz_minuteswest, tz->tz_dsttime);
+ }
+
+ if (verbose) printf("Exiting my_gettimeofday\n");
+ return 0;
+}
+
+// High-precision clock_gettime using TSC
+int clock_gettime(clockid_t clock_id, struct timespec *tp) {
+ if (verbose) printf("Entering clock_gettime\n");
+
+ if (tsc_freq_hz == 0.0) init_tsc_freq(); // Ensure frequency is initialized
+
+ switch (clock_id) {
+ case CLOCK_REALTIME: {
+  if (tp == NULL) {
+   if (verbose) printf("tp is NULL\n");
+   errno = EINVAL;
+   return -1;
+  }
+  struct timeval tv;
+  if (my_gettimeofday(&tv, NULL) != 0) {
+   if (verbose) printf("my_gettimeofday failed\n");
+   return -1;
+  }
+  double total_seconds = (double)tv.tv_sec + (double)tv.tv_usec / 1e6;
 
   tp->tv_sec = (time_t)total_seconds;
   tp->tv_nsec = (long)((total_seconds - (double)tp->tv_sec) * 1e9);
@@ -127,10 +216,12 @@ int clock_gettime(clockid_t clock_id, struct timespec *tp) {
    tp->tv_sec -= 1;
   }
 
+  if (verbose) printf("Computed timespec: %ld sec, %ld nsec\n", tp->tv_sec, tp->tv_nsec);
   return 0;
  }
 
  default:
+  if (verbose) printf("Invalid clock_id\n");
   errno = EINVAL;
   return -1;
  }
@@ -138,7 +229,8 @@ int clock_gettime(clockid_t clock_id, struct timespec *tp) {
 
 // Convert seconds to specified unit
 double convert_time(double seconds, const char *unit, int *use_integer) {
- *use_integer = 0; // Default to floating-point for large values
+ if (verbose) printf("Entering convert_time\n");
+ *use_integer = 0;
  double factor;
 
  if (strcmp(unit, "plancktime") == 0) { factor = 1e44; }
@@ -159,7 +251,7 @@ double convert_time(double seconds, const char *unit, int *use_integer) {
  else if (strcmp(unit, "hours") == 0) { factor = 1.0 / 3600.0; }
  else if (strcmp(unit, "days") == 0) { factor = 1.0 / (3600.0 * 24.0); }
  else if (strcmp(unit, "months") == 0) { factor = 1.0 / (3600.0 * 24.0 * 30.0); }
- else { factor = 1e15; } // Default to femtoseconds
+ else { factor = 1e15; }
 
  double result = seconds * factor;
  if (verbose) printf("DEBUG: seconds = %.15f, factor = %.0f, result = %.0f\n", seconds, factor, result);
@@ -168,9 +260,14 @@ double convert_time(double seconds, const char *unit, int *use_integer) {
 
 // Convert femtoseconds to DMY HH:MM:SS (UTC)
 void print_dmy_from_femtoseconds(double femtoseconds) {
+ if (verbose) printf("Entering print_dmy_from_femtoseconds\n");
  double seconds = femtoseconds / 1e15;
  time_t secs = (time_t)seconds;
- struct tm *tm_info = gmtime(&secs); // UTC time
+ struct tm *tm_info = gmtime(&secs);
+ if (tm_info == NULL) {
+  if (verbose) printf("gmtime failed\n");
+  return;
+ }
 
  char buffer[32];
  strftime(buffer, sizeof(buffer), "%d-%m-%Y %H:%M:%S", tm_info);
@@ -211,6 +308,7 @@ void print_help() {
 }
 
 int main(int argc, char *argv[]) {
+ if (verbose) printf("Entering main\n");
  for (int i = 1; i < argc; i++) {
   if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
    verbose = 1;
@@ -245,18 +343,16 @@ int main(int argc, char *argv[]) {
  unsigned long long rdtsc_start = 0, rdtsc_end = 0;
 
  if (use_unix) {
-  // Get current time in femtoseconds since Unix epoch
   if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
    perror("clock_gettime failed");
    return 1;
   }
   total_seconds = (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
  } else if (use_chrono) {
-  // Measure elapsed time from script start (starts at 0)
   rdtsc_start = rdtsc();
   rdtsc_end = rdtsc();
   double cycles = (double)(rdtsc_end - rdtsc_start);
-  total_seconds = cycles / cpu_freq_hz; // Time elapsed since rdtsc_start
+  total_seconds = cycles / cpu_freq_hz;
  }
 
  int use_integer;
@@ -283,7 +379,7 @@ int main(int argc, char *argv[]) {
   sprintf(format, "%%0%dlld\n", max_digits);
   printf(format, (long long)time_in_unit);
  } else {
-  printf("%.0f\n", time_in_unit); // Full femtosecond value
+  printf("%.0f\n", time_in_unit);
  }
 
  return 0;
