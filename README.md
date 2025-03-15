@@ -1,5 +1,5 @@
 # ctime
-ctime is a cpu based clock-cycle computation replacement for unix gettime function, supportting femtoseconds and attoseconds.
+ctime is a cpu based clock-cycle computation replacement for unix gettime function, supportting femtoseconds and attoseconds. femtoseconds are set up in the main script by default.
 
 ## Features
 Computation of timestamp from cpu clock speed, i precise that my program is purely experimental.
