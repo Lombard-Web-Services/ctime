@@ -27,6 +27,7 @@ double calibrate_with_rdtsc(double clock_freq) {
 ```
 #### pthread version :
 **Calibration:** Runs once at start, but frequency updates live from /proc/cpuinfo.
+
 **Precision:** ~432 ps at 2.314 GHz, surpassing Unix’s 1 ns, with 18-digit attosecond output
 ```
 Physical cores: 8
