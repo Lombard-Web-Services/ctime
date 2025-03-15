@@ -6,7 +6,7 @@ Computation of timestamp from cpu clock speed, i precise that my program is pure
 
 Two version of the program are available
 * one version for pthread with calibration phases (detect cpu clock speed , measure the thresold and compute), features that detect and exploit hyperthreading in /proc/cpuinfo
-* one version for generic cpu
+* one version for generic cpu (use lscpu to find frequency)
 
 I used the rdtsc assembly instruction (read time stamp counter) to avoid to pass the time expensive CLOCKS_PER_SEC of the clock() function included into the time.h library.
 
