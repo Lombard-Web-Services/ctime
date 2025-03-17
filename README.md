@@ -29,20 +29,7 @@ double calibrate_with_rdtsc(double clock_freq) {
 **Calibration:** Runs once at start, but frequency updates live from /proc/cpuinfo.
 
 **Precision:** ~432 ps at 2.314 GHz, surpassing Unix’s 1 ns, with 18-digit attosecond output
-```
-Physical cores: 8
-Logical CPUs: 16
-Hyper-threading: Yes
-Average CPU frequency: 2314.405 MHz (2.314 GHz)
-Tuning n: 2.314 GHz, 0.1s target, 16 threads, n = 7714683
-Sample 0: 185152032 ops, 0.100000 s, cycles: 231440000, freq: 2.314 GHz
-...
-Calibrated frequency: 2.314 GHz
-Cycle time: 0.000000000432148
-Attoseconds per cycle: 432148.148148 as
-Precision: Displaying up to 18 digits for attoseconds
-Cycles: 2314400, Seconds: 0.000001000000, Time in attoseconds: 0.000001000000000000
-```
+
 ## How to use 
 compile with gcc : 
 ```gcc -o ctime ctime.c -pthread```
