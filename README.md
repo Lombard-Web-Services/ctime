@@ -4,6 +4,7 @@ ctime is a timestamp CPU-based clock-cycle computation replacement for the Unix 
 Femtoseconds are set up in the main script by default.
 
 
+
 ## ✨ Features ✨
 
 Computation of timestamp from CPU clock speed.
@@ -86,21 +87,30 @@ Available units:
 ```
 
 
+
 ## 🛑 Limitations 🚧
 
 **ctime** offers better computation than the Unix `nanoseconds gettime` function, with a sub-nanosecond precision of approximately 370 picoseconds at 2.7 GHz (or $3.7 \\times 10^{-13}$ s).
 
 Taking into account that $10^{-9}$ s was not too far from femtoseconds ($10^{-15}$ s), I decided to apply a linear regression with magnitude normalization between cycles and calibrate over a short interval to estimate the time with femtosecond resolution, and then output it.
 
----
+
 
 ## 📜 License & Author 🧑‍💻
 
-**License:** CC BY-NC-ND
-![CC BY-NC-ND license logo](CC_BY-NC-ND.png)
-
+**License:** ![CC BY-NC-ND license logo](CC_BY-NC-ND.png)
 **Author:** Thibaut Lombard
-
 **LinkedIn:** [https://www.linkedin.com/in/thibautlombard/](https://www.linkedin.com/in/thibautlombard/)
-
 **X:** [https://x.com/lombardweb](https://x.com/lombardweb)
+
+
+
+## ⚖️ License Details 📚
+
+This work is licensed under the **Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License**. To view a copy of this license, visit [http://creativecommons.org/licenses/by-nc-nd/4.0/](http://creativecommons.org/licenses/by-nc-nd/4.0/) or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+
+The main conditions of this license are:
+
+* **Attribution (BY):** You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
+* **NonCommercial (NC):** You may not use the material for commercial purposes.
+* **NoDerivatives (ND):** If you remix, transform, or build upon the material, you may not distribute the modified material.
