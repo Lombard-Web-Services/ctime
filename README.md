@@ -1,11 +1,11 @@
-# ⏱️ ctime 💻
+# ⏱️ ctime 
 
 ctime is a timestamp CPU-based clock-cycle computation replacement for the Unix `gettime` function, supporting femtoseconds and attoseconds.
 Femtoseconds are set up in the main script by default.
 
 
 
-## ✨ Features ✨
+## ✨ Features 
 
 Computation of timestamp from CPU clock speed.
 ⚠️ My program is purely experimental.
@@ -42,7 +42,7 @@ double calibrate_with_rdtsc(double clock_freq) {
 
 
 
-## 🛠️ How to Use 🚀
+## 🛠️ How to Use 
 
 Compile with `gcc`:
 
@@ -88,7 +88,7 @@ Available units:
 
 
 
-## 🛑 Limitations 🚧
+## 🛑 Limitations 
 
 **ctime** offers better computation than the Unix `nanoseconds gettime` function, with a sub-nanosecond precision of approximately 370 picoseconds at 2.7 GHz (or $3.7 \\times 10^{-13}$ s).
 
@@ -96,7 +96,7 @@ Taking into account that $10^{-9}$ s was not too far from femtoseconds ($10^{-15
 
 
 
-## 📜 License & Author 🧑‍💻
+## 📜 License & Author 
 
 **License:**
 ![CC BY-NC-ND license logo](CC_BY-NC-ND.png)
@@ -109,7 +109,7 @@ Taking into account that $10^{-9}$ s was not too far from femtoseconds ($10^{-15
 
 
 
-## ⚖️ License Details 📚
+## ⚖️ License Details 
 
 This work is licensed under the **Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License**. To view a copy of this license, visit [http://creativecommons.org/licenses/by-nc-nd/4.0/](http://creativecommons.org/licenses/by-nc-nd/4.0/) or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
 
