@@ -98,9 +98,13 @@ Taking into account that $10^{-9}$ s was not too far from femtoseconds ($10^{-15
 
 ## 📜 License & Author 🧑‍💻
 
-**License:** ![CC BY-NC-ND license logo](CC_BY-NC-ND.png)
+**License:**
+![CC BY-NC-ND license logo](CC_BY-NC-ND.png)
+
 **Author:** Thibaut Lombard
+
 **LinkedIn:** [https://www.linkedin.com/in/thibautlombard/](https://www.linkedin.com/in/thibautlombard/)
+
 **X:** [https://x.com/lombardweb](https://x.com/lombardweb)
 
 
