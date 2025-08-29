@@ -1,17 +1,25 @@
-# ctime
-ctime is a timestamp cpu based clock-cycle computation replacement for unix gettime function, supportting femtoseconds and attoseconds. femtoseconds are set up in the main script by default.
+# ⏱️ ctime 💻
 
-## Features
-Computation of timestamp from cpu clock speed, i precise that my program is purely experimental.
+ctime is a timestamp CPU-based clock-cycle computation replacement for the Unix `gettime` function, supporting femtoseconds and attoseconds.
+Femtoseconds are set up in the main script by default.
 
-Two version of the program are available
-* one version for pthread with calibration phases (detect cpu clock speed , measure the thresold and compute), features that detect and exploit hyperthreading in /proc/cpuinfo
-* one version for generic cpu (use lscpu to find frequency)
+---
 
-I used the rdtsc assembly instruction (read time stamp counter) to avoid to pass the time expensive CLOCKS_PER_SEC of the clock() function included into the time.h library.
+## ✨ Features ✨
 
-Here is the rdtsc call
-```sh
+Computation of timestamp from CPU clock speed.
+⚠️ My program is purely experimental.
+
+Two versions of the program are available:
+
+* **pthread version** → with calibration phases (detects CPU clock speed, measures threshold, and computes). It can detect and exploit hyperthreading via `/proc/cpuinfo`.
+* **generic CPU version** → uses `lscpu` to find frequency.
+
+I used the `rdtsc` assembly instruction (read time stamp counter) to avoid the expensive `CLOCKS_PER_SEC` of the `clock()` function in the `time.h` library.
+
+Here is the `rdtsc` call:
+
+```c
 unsigned long long rdtsc() {
     unsigned int lo, hi;
     __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
@@ -25,17 +33,27 @@ double calibrate_with_rdtsc(double clock_freq) {
     return (end - start) / clock_freq; // Cycles per second
 }
 ```
-#### pthread version :
-**Calibration:** Runs once at start, but frequency updates live from /proc/cpuinfo.
 
-**Precision:** ~432 ps at 2.314 GHz, surpassing Unix’s 1 ns, with 18-digit attosecond output
+#### Pthread version :
 
-## How to use 
-compile with gcc : 
-```gcc -o ctime ctime.c -pthread```
-or execute (v for verbose mode,   :
+**Calibration:** Runs once at start, but frequency updates live from `/proc/cpuinfo`.
+
+**Precision:** \~432 ps at 2.314 GHz, surpassing Unix’s 1 ns, with 18-digit attosecond output
+
+---
+
+## 🛠️ How to Use 🚀
+
+Compile with `gcc`:
+
+```bash
+gcc -o ctime ctime.c -pthread
+```
+
+or execute (in verbose mode):
+
+```bash
 ./ctime -v --unit femtoseconds
-
 ```sh
 Usage: ./ctime [OPTIONS]
 Options:
@@ -66,12 +84,22 @@ Available units:
   hours      3600 s
   days    86400 s
   months     ~2592000 s
-
 ```
 
-## Limitations
-ctime do better compute than unix nanoseconds gettime function, it's a sub-nanosecond precision : ~370 picoseconds at 2.7 GHz, or 3.7 × 10⁻¹³ s, but taking into account that (10⁻⁹ s)was not too far from femtoseconds (10⁻¹⁵ s) I have decided to apply a linear regression with magnitude normalization between cycles and calibrate over a short interval to estimate time at femtosecond resolution, then outputed it.
+---
 
-### credits
-Grok3
+## 🛑 Limitations 🚧
 
+**ctime** offers better computation than the Unix `nanoseconds gettime` function, with a sub-nanosecond precision of approximately 370 picoseconds at 2.7 GHz (or $3.7 \\times 10^{-13}$ s).
+
+Taking into account that $10^{-9}$ s was not too far from femtoseconds ($10^{-15}$ s), I decided to apply a linear regression with magnitude normalization between cycles and calibrate over a short interval to estimate the time with femtosecond resolution, and then output it.
+
+---
+
+## 📜 License & Author 🧑‍💻
+
+**License:** CC BY-NC-ND
+![CC BY-NC-ND license logo](CC_BY-NC-ND.png)
+**Author:** Thibaut Lombard
+**LinkedIn:** [https://www.linkedin.com/in/thibautlombard/](https://www.linkedin.com/in/thibautlombard/)
+**X:** [https://x.com/lombardweb](https://x.com/lombardweb)
