@@ -3,7 +3,6 @@
 ctime is a timestamp CPU-based clock-cycle computation replacement for the Unix `gettime` function, supporting femtoseconds and attoseconds.
 Femtoseconds are set up in the main script by default.
 
----
 
 ## ✨ Features ✨
 
@@ -40,7 +39,7 @@ double calibrate_with_rdtsc(double clock_freq) {
 
 **Precision:** \~432 ps at 2.314 GHz, surpassing Unix’s 1 ns, with 18-digit attosecond output
 
----
+
 
 ## 🛠️ How to Use 🚀
 
@@ -86,7 +85,6 @@ Available units:
   months     ~2592000 s
 ```
 
----
 
 ## 🛑 Limitations 🚧
 
@@ -100,6 +98,9 @@ Taking into account that $10^{-9}$ s was not too far from femtoseconds ($10^{-15
 
 **License:** CC BY-NC-ND
 ![CC BY-NC-ND license logo](CC_BY-NC-ND.png)
+
 **Author:** Thibaut Lombard
+
 **LinkedIn:** [https://www.linkedin.com/in/thibautlombard/](https://www.linkedin.com/in/thibautlombard/)
+
 **X:** [https://x.com/lombardweb](https://x.com/lombardweb)
